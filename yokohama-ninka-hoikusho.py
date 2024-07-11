@@ -37,7 +37,6 @@ waiting_children_map = {
 
 # 施設所在区を選択後の座標
 district_map = {
-    "": [35.452725, 139.595061],  # 横浜市
     "鶴見区": [35.494365, 139.680332],
     "神奈川区": [35.485009, 139.618465],
     "西区": [35.457168, 139.621194],
@@ -55,6 +54,7 @@ district_map = {
     "栄区": [35.359876, 139.554421],
     "泉区": [35.418646, 139.501889],
     "瀬谷区": [35.469557, 139.488063],
+    "": [35.452725, 139.595061],  # 横浜市
 }
 
 
@@ -108,11 +108,11 @@ def main():
     # サイドバー: 施設所在区を選択
     # -------------------------------------------------------------------------
     with st.sidebar:
-        district_options = [''] + list(df['施設所在区'].unique())
+        district_options = list(df['施設所在区'].unique()) + ['']
         selected_district = st.sidebar.selectbox(
             '施設所在区を選択してください:',
             options=district_options,
-            index=0
+            index=3
         )
         if selected_district != '':
             df = df[df['施設所在区'] == selected_district]
@@ -137,8 +137,7 @@ def main():
     st.title('横浜市認可保育園マップ(2024/07)')
     st.markdown(
         "- [横浜市オープンデータポータル: 保育所等の入所状況](https://data.city.yokohama.lg.jp/dataset/kodomo_nyusho-jokyo)のデータを基に可視化しています。\n"
-        "- サイドバーから施設所在区および児童のクラスを選択してください。\n"
-        "- デフォルトでは全区域および全クラスの合計を表示するため重たいです。施設所在区を選択すると描画が高速になります。")
+        "- サイドバーから施設所在区および児童のクラスを選択してください。")
 
     # -------------------------------------------------------------------------
     # マップ表示
@@ -162,8 +161,8 @@ def main():
         folium.Marker(
             location=[row['緯度'], row['経度']],
             tooltip=row['施設・事業名'],
-            popup=folium.Popup(pop, max_width=400),
-            icon=folium.Icon(icon="home", icon_color="white", color=determine_pop_color(enrolled, acceptable, waiting))
+            popup=folium.Popup(pop, max_width=400, lazy=True),
+            icon=folium.Icon(icon="home", icon_color="white", color=determine_pop_color(enrolled, acceptable, waiting)),
         ).add_to(m)
 
     page_width = streamlit_js_eval(js_expressions='window.innerWidth', key='WIDTH', want_output=True)
