@@ -28,9 +28,10 @@ def is_valid_coordinates(lat, lng):
     return (lat is not None and lng is not None) and (lat.text != '0' and lng.text != '0')
 
 
-def get_lat_lng(url, retry=10):
+def fetch_lat_lng(url, retry=10):
     attempt = 0
     while attempt < retry:
+        time.sleep(10)
         response = requests.get(url)
         if response.status_code == 200:
             root = ET.fromstring(response.text)
@@ -39,19 +40,7 @@ def get_lat_lng(url, retry=10):
             if is_valid_coordinates(lat, lng):
                 return lat.text, lng.text
         attempt += 1
-        time.sleep(11)
     return 0, 0
-
-
-def extract_nursery_houses_column(file_path):
-    """
-    指定されたCSVファイルから保育園の名前が記載された列を抽出する関数。
-
-    :param file_path: 保育園の名前が記載されたCSVファイルのパス
-    :return: 保育園の名前を格納したリスト
-    """
-    df = pd.read_csv(file_path, skiprows=1)
-    return df["施設・事業名"].tolist()
 
 
 def load_saved_locations(file_path):
@@ -70,19 +59,19 @@ def load_saved_locations(file_path):
 
 if __name__ == "__main__":
     config_json = load_config()
-    nursery_houses = extract_nursery_houses_column(config_json['waiting'])
+    df_yokohama = pd.read_csv(config_json['waiting'], skiprows=1)
     saved_locations_dict = load_saved_locations(config_json['last_month_location'])
 
     with open(config_json['location'], mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(['施設・事業名', '緯度', '経度'])
 
-        for nursery_house in nursery_houses:
+        for index, row in df_yokohama.iterrows():
+            nursery_house = row['施設・事業名']
+            district = row['施設所在区']
             if nursery_house in saved_locations_dict:
                 lat, lng = saved_locations_dict[nursery_house]
             else:
-                lat, lng = get_lat_lng(f"https://www.geocoding.jp/api/?q=横浜市 {nursery_house}")
-                time.sleep(10)
-            print(f"{nursery_house},{lat},{lng}")
+                lat, lng = fetch_lat_lng(f"https://www.geocoding.jp/api/?q=横浜市{district} {nursery_house}")
+            print(f"{index:04} {nursery_house},{lat},{lng}")
             writer.writerow([nursery_house, lat, lng])
-
