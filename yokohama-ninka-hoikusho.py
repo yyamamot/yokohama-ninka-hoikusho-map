@@ -1,3 +1,6 @@
+import json
+from dataclasses import dataclass, asdict
+
 import folium
 import geojson
 import pandas as pd
@@ -6,12 +9,24 @@ from geojson import Feature, Point, FeatureCollection
 from streamlit_folium import st_folium
 from streamlit_js_eval import streamlit_js_eval
 
-file_paths = {
-    'waiting': '202407-machi.csv',
-    'acceptable': '202407-kanou.csv',
-    'enrolled': '202407-jidou.csv',
-    'location': '202407-location.csv'
-}
+
+@dataclass
+class Config:
+    last_updated: str
+    waiting: str
+    acceptable: str
+    enrolled: str
+    last_month_location: str
+    location: str
+
+
+def load_config() -> dict:
+    with open('config.json', 'r') as file:
+        config_dict = json.load(file)
+    return asdict(Config(**config_dict))
+
+
+config_json = load_config()
 
 # データフレームのカラム名を変換
 data_maps = {
@@ -65,16 +80,16 @@ def preprocess_data(df, column_map):
 
 
 @st.cache_data
-def generate_dataframe(file_paths, data_maps):
+def generate_dataframe(config_json, data_maps):
     merge_keys = ["施設所在区", "標準地域コード", "施設・事業名", "施設番号", "更新日"]
 
     dfs = {}
     for key in ['waiting', 'acceptable', 'enrolled']:
-        df = pd.read_csv(file_paths[key], skiprows=1)
+        df = pd.read_csv(config_json[key], skiprows=1)
         df_preprocessed = preprocess_data(df, data_maps[key])
         dfs[key] = df_preprocessed
 
-    df_location = pd.read_csv(file_paths['location'])
+    df_location = pd.read_csv(config_json['location']).iloc[:, 1:]
     df_merged = dfs['enrolled'].merge(dfs['acceptable'], on=merge_keys)
     df_merged = df_merged.merge(dfs['waiting'], on=merge_keys)
     return pd.concat([df_merged, df_location], axis=1)
@@ -104,7 +119,7 @@ def main():
     # -----------------------------------------------------------------------------
     # データフレーム作成
     # -----------------------------------------------------------------------------
-    df = generate_dataframe(file_paths, data_maps)
+    df = generate_dataframe(config_json, data_maps)
 
     # -------------------------------------------------------------------------
     # サイドバー: 施設所在区を選択
@@ -167,7 +182,7 @@ def main():
     # ヘッダ表示
     # -------------------------------------------------------------------------
     st.markdown(
-        "### 横浜市認可保育所マップ(2024/07)\n"
+        f"### 横浜市認可保育所マップ({config_json['last_updated']})\n"
         "- [横浜市オープンデータポータル: 保育所等の入所状況](https://data.city.yokohama.lg.jp/dataset/kodomo_nyusho-jokyo)のデータを基に可視化しています。\n"
         "- サイドバーから施設所在区および児童のクラスを選択してください。")
 
