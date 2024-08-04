@@ -3,6 +3,6 @@
   "waiting": "csv/202408-machi.csv",
   "acceptable": "csv/202408-kanou.csv",
   "enrolled": "csv/202408-jidou.csv",
-  "last_month_location": "csv/202407-location-dummy.csv",
+  "last_month_location": "csv/202407-location.csv",
   "location": "csv/202408-location.csv"
 }

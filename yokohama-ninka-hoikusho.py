@@ -136,10 +136,9 @@ def main():
     # -------------------------------------------------------------------------
     with st.sidebar:
         # デフォルトは横浜市(表示場は空白)
-        district_options = district_keys
         selected_district = st.sidebar.selectbox(
             '施設所在区を選択してください:',
-            options=district_options,
+            options=district_keys,
             index=0
         )
         if selected_district != '':
