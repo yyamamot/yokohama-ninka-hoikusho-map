@@ -3,7 +3,7 @@ from dataclasses import dataclass, asdict
 
 import folium
 import geojson
-import pandas as pd
+import polars as pl
 import streamlit as st
 from geojson import Feature, Point, FeatureCollection
 from streamlit_folium import st_folium
@@ -72,10 +72,16 @@ district_map = {
     "瀬谷区": [35.469557, 139.488063],
 }
 
+district_keys = [
+    "", "鶴見区", "神奈川区", "西区", "中区", "南区", "港南区", "保土ケ谷区",
+    "旭区", "磯子区", "金沢区", "港北区", "緑区", "青葉区", "戸塚区",
+    "栄区", "泉区", "瀬谷区"
+]
+
 
 def preprocess_data(df, column_map):
-    df = df.iloc[:, :-1]  # 最終列を削除
-    df.rename(columns=column_map, inplace=True)
+    df = df[:, :-1]  # 最終列を削除
+    df = df.rename(column_map)
     return df
 
 
@@ -85,14 +91,18 @@ def generate_dataframe(config_json, data_maps):
 
     dfs = {}
     for key in ['waiting', 'acceptable', 'enrolled']:
-        df = pd.read_csv(config_json[key], skiprows=1)
+        df = pl.read_csv(config_json[key], skip_rows=1)
         df_preprocessed = preprocess_data(df, data_maps[key])
         dfs[key] = df_preprocessed
 
-    df_location = pd.read_csv(config_json['location']).iloc[:, 1:]
-    df_merged = dfs['enrolled'].merge(dfs['acceptable'], on=merge_keys)
-    df_merged = df_merged.merge(dfs['waiting'], on=merge_keys)
-    return pd.concat([df_merged, df_location], axis=1)
+    df_location = pl.read_csv(config_json['location']).select(pl.all().exclude('列名'))
+
+    # df_locationのカラム名を変更
+    df_location = df_location.rename({"施設・事業名": "施設・事業名_ロケーション"})
+
+    df_merged = dfs['enrolled'].join(dfs['acceptable'], on=merge_keys)
+    df_merged = df_merged.join(dfs['waiting'], on=merge_keys)
+    return pl.concat([df_merged, df_location], how='horizontal')
 
 
 def determine_pop_color(enrolled_children, acceptable_children, waiting_children):
@@ -126,14 +136,14 @@ def main():
     # -------------------------------------------------------------------------
     with st.sidebar:
         # デフォルトは横浜市(表示場は空白)
-        district_options = [''] + list(df['施設所在区'].unique())
+        district_options = district_keys
         selected_district = st.sidebar.selectbox(
             '施設所在区を選択してください:',
             options=district_options,
             index=0
         )
         if selected_district != '':
-            df = df[df['施設所在区'] == selected_district]
+            df = df.filter(pl.col('施設所在区') == selected_district)
 
     # -------------------------------------------------------------------------
     # サイドバー: 児童のクラスを選択
@@ -155,7 +165,7 @@ def main():
     # Note: folium.GeoJson() でフォント設定ができないため、GeoJSON内にHTMLタグを埋め込む
     # -----------------------------------------------------------------------------
     features = []
-    for _, row in df.iterrows():
+    for row in df.iter_rows(named=True):
         age_groups = ['０歳児', '１歳児', '２歳児', '３歳児', '４歳児', '５歳児', '合計']
         props = {"施設・事業名": f"<span style='font-size: 16px;'>{row['施設・事業名']}</span>"}
 

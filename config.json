@@ -1,8 +1,8 @@
 {
-  "last_updated": "202407",
-  "waiting": "csv/202407-machi.csv",
-  "acceptable": "csv/202407-kanou.csv",
-  "enrolled": "csv/202407-jidou.csv",
+  "last_updated": "202408",
+  "waiting": "csv/202408-machi.csv",
+  "acceptable": "csv/202408-kanou.csv",
+  "enrolled": "csv/202408-jidou.csv",
   "last_month_location": "csv/202407-location-dummy.csv",
-  "location": "csv/202407-location.csv"
+  "location": "csv/202408-location.csv"
 }
